@@ -7,76 +7,78 @@ Original file is located at
     https://colab.research.google.com/drive/1sGHkibAnpTkEwYyXzJ8KBVUB0k8rPF8g
 """
 
+source_code = """
 # OPTIGUIDE DATA CODE GOES HERE
 
-capacity_in_supplier = {'supplier1': 120, 'supplier2': 100, 'supplier3': 80}
+capacity_in_supplier = {'supplier1': 150, 'supplier2': 50, 'supplier3': 100}
 
-shipping_cost_from_supplier_to_factory = {
-    ('supplier1', 'factory1'): 4,
-    ('supplier1', 'factory2'): 6,
-    ('supplier2', 'factory1'): 5,
-    ('supplier2', 'factory2'): 3,
-    ('supplier3', 'factory1'): 7,
-    ('supplier3', 'factory2'): 4
+shipping_cost_from_supplier_to_roastery = {
+    ('supplier1', 'roastery1'): 5,
+    ('supplier1', 'roastery2'): 4,
+    ('supplier2', 'roastery1'): 6,
+    ('supplier2', 'roastery2'): 3,
+    ('supplier3', 'roastery1'): 2,
+    ('supplier3', 'roastery2'): 7
 }
 
-cost_negatif = {'factory1': 39.39, 'factory2': 39.39}
-cost_pozitif = {'factory1': 39.39, 'factory2': 39.39}
+roasting_cost_light = {'roastery1': 20, 'roastery2': 35}  # Güncellenmiş maliyetler
+roasting_cost_dark = {'roastery1': 25, 'roastery2': 30}
 
-customers = ['fiat_35_nc', 'isuzu_24v']
-
-shipping_cost_from_factory_to_customer = {
-    ('factory1', 'fiat_35_nc'): 4,
-    ('factory1', 'isuzu_24v'): 6,
-    ('factory2', 'fiat_35_nc'): 5,
-    ('factory2', 'isuzu_24v'): 4,
+shipping_cost_from_roastery_to_cafe = {
+    ('roastery1', 'cafe1'): 5,
+    ('roastery1', 'cafe2'): 3,
+    ('roastery1', 'cafe3'): 6,
+    ('roastery2', 'cafe1'): 4,
+    ('roastery2', 'cafe2'): 5,
+    ('roastery2', 'cafe3'): 2
 }
 
-negatif_needed_for_customer = {
-    'fiat_35_nc': 50,
-    'isuzu_24v': 40
-}
+light_coffee_needed_for_cafe = {'cafe1': 20, 'cafe2': 30, 'cafe3': 40}
+dark_coffee_needed_for_cafe = {'cafe1': 20, 'cafe2': 20, 'cafe3': 100}
 
-pozitif_needed_for_customer = {
-    'fiat_35_nc': 60,
-    'isuzu_24v': 30
-}
-
-factories = list(set(i[1] for i in shipping_cost_from_supplier_to_factory.keys()))
-suppliers = list(set(i[0] for i in shipping_cost_from_supplier_to_factory.keys()))
-
-# OPTIGUIDE CONSTRAINT CODE GOES HERE
+cafes = list(set(i[1] for i in shipping_cost_from_roastery_to_cafe.keys()))
+roasteries = list(set(i[1] for i in shipping_cost_from_supplier_to_roastery.keys()))
+suppliers = list(set(i[0] for i in shipping_cost_from_supplier_to_roastery.keys()))
 
 from gurobipy import GRB, Model
 
-model = Model("coal_distribution")
+model = Model("coffee_distribution")
 
-x = model.addVars(shipping_cost_from_supplier_to_factory.keys(), vtype=GRB.INTEGER, name="x")
-y_negatif = model.addVars(shipping_cost_from_factory_to_customer.keys(), vtype=GRB.INTEGER, name="y_negatif")
-y_pozitif = model.addVars(shipping_cost_from_factory_to_customer.keys(), vtype=GRB.INTEGER, name="y_pozitif")
+x = model.addVars(shipping_cost_from_supplier_to_roastery.keys(), vtype=GRB.INTEGER, name="x")
+y_light = model.addVars(shipping_cost_from_roastery_to_cafe.keys(), vtype=GRB.INTEGER, name="y_light")
+y_dark = model.addVars(shipping_cost_from_roastery_to_cafe.keys(), vtype=GRB.INTEGER, name="y_dark")
 
-# Akış koruma kısıtları (fabrikalarda giriş = çıkış)
-for r in factories:
+# Objective function - toplam maliyet minimizasyonu
+model.setObjective(
+    sum(x[i] * shipping_cost_from_supplier_to_roastery[i] for i in shipping_cost_from_supplier_to_roastery.keys()) +
+    sum(roasting_cost_light[r] * y_light[r, c] + roasting_cost_dark[r] * y_dark[r, c] for r, c in shipping_cost_from_roastery_to_cafe.keys()) +
+    sum((y_light[j] + y_dark[j]) * shipping_cost_from_roastery_to_cafe[j] for j in shipping_cost_from_roastery_to_cafe.keys()),
+    GRB.MINIMIZE
+)
+
+# Conservation of flow constraint (akış koruma)
+for r in roasteries:
     model.addConstr(
-        sum(x[i] for i in shipping_cost_from_supplier_to_factory.keys() if i[1] == r) ==
-        sum(y_negatif[j] + y_pozitif[j] for j in shipping_cost_from_factory_to_customer.keys() if j[0] == r),
+        sum(x[i] for i in shipping_cost_from_supplier_to_roastery.keys() if i[1] == r) ==
+        sum(y_light[j] + y_dark[j] for j in shipping_cost_from_roastery_to_cafe.keys() if j[0] == r),
         f"flow_{r}"
     )
 
-# Tedarikçi kapasite kısıtları
+# Supply constraints (tedarikçi kapasitesi)
 for s in suppliers:
     model.addConstr(
-        sum(x[i] for i in shipping_cost_from_supplier_to_factory.keys() if i[0] == s) <= capacity_in_supplier[s],
+        sum(x[i] for i in shipping_cost_from_supplier_to_roastery.keys() if i[0] == s) <= capacity_in_supplier[s],
         f"supply_{s}"
     )
 
-# Talep kısıtları
-for c in customers:
+# Demand constraints (talep karşılanması)
+for c in cafes:
     model.addConstr(
-        sum(y_negatif[j] for j in shipping_cost_from_factory_to_customer.keys() if j[1] == c) >= negatif_needed_for_customer[c],
-        f"negatif_demand_{c}"
+        sum(y_light[j] for j in shipping_cost_from_roastery_to_cafe.keys() if j[1] == c) >= light_coffee_needed_for_cafe[c],
+        f"light_demand_{c}"
     )
     model.addConstr(
-        sum(y_pozitif[j] for j in shipping_cost_from_factory_to_customer.keys() if j[1] == c) >= pozitif_needed_for_customer[c],
-        f"pozitif_demand_{c}"
+        sum(y_dark[j] for j in shipping_cost_from_roastery_to_cafe.keys() if j[1] == c) >= dark_coffee_needed_for_cafe[c],
+        f"dark_demand_{c}"
     )
+"""
