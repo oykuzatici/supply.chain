@@ -34,6 +34,7 @@ shipping_cost_from_roastery_to_cafe = {
 }
 
 light_coffee_needed_for_cafe = {'cafe1': 20, 'cafe2': 30, 'cafe3': 40}
+
 dark_coffee_needed_for_cafe = {'cafe1': 20, 'cafe2': 20, 'cafe3': 100}
 
 cafes = list(set(i[1] for i in shipping_cost_from_roastery_to_cafe.keys()))
@@ -48,7 +49,7 @@ x = model.addVars(shipping_cost_from_supplier_to_roastery.keys(), vtype=GRB.INTE
 y_light = model.addVars(shipping_cost_from_roastery_to_cafe.keys(), vtype=GRB.INTEGER, name="y_light")
 y_dark = model.addVars(shipping_cost_from_roastery_to_cafe.keys(), vtype=GRB.INTEGER, name="y_dark")
 
-# Objective function - toplam maliyet minimizasyonu
+# Objective function (Amaç fonksiyonu): Toplam maliyeti minimize et
 model.setObjective(
     sum(x[i] * shipping_cost_from_supplier_to_roastery[i] for i in shipping_cost_from_supplier_to_roastery.keys()) +
     sum(roasting_cost_light[r] * y_light[r, c] + roasting_cost_dark[r] * y_dark[r, c] for r, c in shipping_cost_from_roastery_to_cafe.keys()) +
@@ -56,7 +57,7 @@ model.setObjective(
     GRB.MINIMIZE
 )
 
-# Conservation of flow constraint (akış koruma)
+# Conservation of flow constraint (Akış koruma)
 for r in roasteries:
     model.addConstr(
         sum(x[i] for i in shipping_cost_from_supplier_to_roastery.keys() if i[1] == r) ==
@@ -64,14 +65,14 @@ for r in roasteries:
         f"flow_{r}"
     )
 
-# Supply constraints (tedarikçi kapasitesi)
+# Supply constraints (Tedarikçi kapasite kısıtları)
 for s in suppliers:
     model.addConstr(
         sum(x[i] for i in shipping_cost_from_supplier_to_roastery.keys() if i[0] == s) <= capacity_in_supplier[s],
         f"supply_{s}"
     )
 
-# Demand constraints (talep karşılanması)
+# Demand constraints (Talep kısıtları)
 for c in cafes:
     model.addConstr(
         sum(y_light[j] for j in shipping_cost_from_roastery_to_cafe.keys() if j[1] == c) >= light_coffee_needed_for_cafe[c],
