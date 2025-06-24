@@ -7,12 +7,10 @@ Original file is located at
     https://colab.research.google.com/drive/1SEF3PfPsmBsCgEFpVy-u7xFanlSa8SiP
 """
 
-code = """from gurobipy import GRB, Model
-import random
+code = """# OPTIGUIDE DATA CODE GOES HERE
 
-# ---------------------
-# DATA DEFINITIONS
-# ---------------------
+from gurobipy import GRB, Model
+import random
 
 # Supplier capacity limits
 supplier_capacity = {'supplier1': 120, 'supplier2': 100, 'supplier3': 80}
@@ -53,9 +51,7 @@ demand_positive = {
 factories = list(set(i[1] for i in shipping_cost_supplier_to_factory.keys()))
 suppliers = list(set(i[0] for i in shipping_cost_supplier_to_factory.keys()))
 
-# ---------------------
-# MODEL INITIALIZATION
-# ---------------------
+# OPTIGUIDE CONSTRAINT CODE GOES HERE
 
 model = Model("coal_distribution")
 
@@ -63,10 +59,6 @@ model = Model("coal_distribution")
 x = model.addVars(shipping_cost_supplier_to_factory.keys(), vtype=GRB.INTEGER, name="x")  # supplier to factory
 y_negative = model.addVars(shipping_cost_factory_to_customer.keys(), vtype=GRB.INTEGER, name="y_negative")  # factory to customer (negative coal)
 y_positive = model.addVars(shipping_cost_factory_to_customer.keys(), vtype=GRB.INTEGER, name="y_positive")  # factory to customer (positive coal)
-
-# ---------------------
-# CONSTRAINTS
-# ---------------------
 
 # Flow balance: input to factory = output from factory
 for f in factories:
@@ -103,10 +95,6 @@ for f in factories:
         f"factory_capacity_{f}"
     )
 
-# ---------------------
-# OBJECTIVE FUNCTION
-# ---------------------
-
 # Factory-specific product costs (per unit)
 cost_negative = {'factory1': 39.39, 'factory2': 39.39}
 cost_positive = {'factory1': 39.39, 'factory2': 39.39}
@@ -115,7 +103,7 @@ cost_positive = {'factory1': 39.39, 'factory2': 39.39}
 production_cost_negative = 5
 production_cost_positive = 8
 
-# Total cost: supplier-factory transport + factory-customer transport + product + production
+# Objective function: minimize total costs (transport + product + production)
 model.setObjective(
     sum(shipping_cost_supplier_to_factory[i] * x[i] for i in shipping_cost_supplier_to_factory) +
 
@@ -128,21 +116,19 @@ model.setObjective(
     GRB.MINIMIZE
 )
 
-# ---------------------
-# SOLVE MODEL AND OUTPUT RESULTS
-# ---------------------
-
+# Solve model and display results
 model.optimize()
 
 if model.status == GRB.OPTIMAL:
-    print(f"\n Optimal solution found. Total cost: {model.ObjVal:.2f}\n")
-    print(" Decision Variables:")
+    print(f"\n✅ Optimal solution found. Total cost: {model.ObjVal:.2f}\n")
+    print("📦 Decision Variables:")
     for v in model.getVars():
         if v.X > 0:
             print(f"{v.VarName} = {v.X}")
-    print("\n Factory Capacities:")
+    print("\n🏭 Factory Capacities:")
     for f in factory_capacity:
         print(f"{f}: {factory_capacity[f]} units")
 else:
-    print(" No feasible solution found.")
+    print("❌ No feasible solution found.")
+
 """
