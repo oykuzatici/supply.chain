@@ -55,80 +55,79 @@ suppliers = list(set(i[0] for i in shipping_cost_supplier_to_factory.keys()))
 
 model = Model("coal_distribution")
 
-# Decision variables
-x = model.addVars(shipping_cost_supplier_to_factory.keys(), vtype=GRB.INTEGER, name="x")  # supplier to factory
-y_negative = model.addVars(shipping_cost_factory_to_customer.keys(), vtype=GRB.INTEGER, name="y_negative")  # factory to customer (negative coal)
-y_positive = model.addVars(shipping_cost_factory_to_customer.keys(), vtype=GRB.INTEGER, name="y_positive")  # factory to customer (positive coal)
+# Decision variables:
+# x: shipment from suppliers to factories
+x = model.addVars(shipping_cost_supplier_to_factory.keys(), vtype=GRB.INTEGER, name="x")
 
-# Flow balance: input to factory = output from factory
+# y_negative: shipment of negative coal from factories to customers
+y_negative = model.addVars(shipping_cost_factory_to_customer.keys(), vtype=GRB.INTEGER, name="y_negative")
+
+# y_positive: shipment of positive coal from factories to customers
+y_positive = model.addVars(shipping_cost_factory_to_customer.keys(), vtype=GRB.INTEGER, name="y_positive")
+
+# Flow balance constraints: input to each factory equals output from that factory
 for f in factories:
     model.addConstr(
         sum(x[i] for i in shipping_cost_supplier_to_factory if i[1] == f) ==
         sum(y_negative[j] + y_positive[j] for j in shipping_cost_factory_to_customer if j[0] == f),
-        f"flow_balance_{f}"
+        name=f"flow_balance_{f}"
     )
 
 # Supplier capacity constraints
 for s in suppliers:
     model.addConstr(
         sum(x[i] for i in shipping_cost_supplier_to_factory if i[0] == s) <= supplier_capacity[s],
-        f"supplier_capacity_{s}"
+        name=f"supplier_capacity_{s}"
     )
 
-# Customer demand constraints
+# Customer demand constraints for negative and positive coal
 for c in customers:
     model.addConstr(
         sum(y_negative[j] for j in shipping_cost_factory_to_customer if j[1] == c) >= demand_negative[c],
-        f"demand_negative_{c}"
+        name=f"demand_negative_{c}"
     )
     model.addConstr(
         sum(y_positive[j] for j in shipping_cost_factory_to_customer if j[1] == c) >= demand_positive[c],
-        f"demand_positive_{c}"
+        name=f"demand_positive_{c}"
     )
 
-# Factory production capacity: total output (positive + negative) must not exceed capacity
+# Factory production capacity constraints (sum of positive and negative shipments)
 factory_capacity = {f: random.randint(100, 150) for f in factories}
 for f in factories:
     model.addConstr(
-        sum(y_negative[j] + y_positive[j] for j in shipping_cost_factory_to_customer if j[0] == f)
-        <= factory_capacity[f],
-        f"factory_capacity_{f}"
+        sum(y_negative[j] + y_positive[j] for j in shipping_cost_factory_to_customer if j[0] == f) <= factory_capacity[f],
+        name=f"factory_capacity_{f}"
     )
 
-# Factory-specific product costs (per unit)
+# Production cost per unit for negative and positive coal at factories
 cost_negative = {'factory1': 39.39, 'factory2': 39.39}
 cost_positive = {'factory1': 39.39, 'factory2': 39.39}
 
-# Hypothetical production costs
+# Hypothetical additional production costs
 production_cost_negative = 5
 production_cost_positive = 8
 
-# Objective function: minimize total costs (transport + product + production)
+# Objective function: minimize total cost (supplier-to-factory + factory-to-customer + production costs)
 model.setObjective(
     sum(shipping_cost_supplier_to_factory[i] * x[i] for i in shipping_cost_supplier_to_factory) +
-
-    sum((shipping_cost_factory_to_customer[j] + cost_negative[j[0]] + production_cost_negative) * y_negative[j]
-        for j in shipping_cost_factory_to_customer) +
-
-    sum((shipping_cost_factory_to_customer[j] + cost_positive[j[0]] + production_cost_positive) * y_positive[j]
-        for j in shipping_cost_factory_to_customer),
-
+    sum((shipping_cost_factory_to_customer[j] + cost_negative[j[0]] + production_cost_negative) * y_negative[j] for j in shipping_cost_factory_to_customer) +
+    sum((shipping_cost_factory_to_customer[j] + cost_positive[j[0]] + production_cost_positive) * y_positive[j] for j in shipping_cost_factory_to_customer),
     GRB.MINIMIZE
 )
 
-# Solve model and display results
+# Solve the model
 model.optimize()
 
+# Print results if optimal solution found
 if model.status == GRB.OPTIMAL:
-    print(f"\n✅ Optimal solution found. Total cost: {model.ObjVal:.2f}\n")
-    print("📦 Decision Variables:")
+    print(f"✅ Optimal solution found. Total cost: {model.ObjVal:.2f}")
+    print("\nDecision Variables with positive shipment:")
     for v in model.getVars():
         if v.X > 0:
             print(f"{v.VarName} = {v.X}")
-    print("\n🏭 Factory Capacities:")
+    print("\nFactory Capacities:")
     for f in factory_capacity:
         print(f"{f}: {factory_capacity[f]} units")
 else:
     print("❌ No feasible solution found.")
-
 """
