@@ -54,15 +54,6 @@ x = model.addVars(shipping_cost_from_supplier_to_factory.keys(), vtype=GRB.INTEG
 y_negatif = model.addVars(shipping_cost_from_factory_to_customer.keys(), vtype=GRB.INTEGER, name="y_negatif")
 y_pozitif = model.addVars(shipping_cost_from_factory_to_customer.keys(), vtype=GRB.INTEGER, name="y_pozitif")
 
-### objective ###
-
-model.setObjective(
-    sum(x[i] * shipping_cost_from_supplier_to_factory[i] for i in shipping_cost_from_supplier_to_factory.keys()) +
-    sum(cost_negatif[r] * y_negatif[r, c] + cost_pozitif[r] * y_pozitif[r, c] for r, c in shipping_cost_from_factory_to_customer.keys()) +
-    sum((y_negatif[j] + y_pozitif[j]) * shipping_cost_from_factory_to_customer[j] for j in shipping_cost_from_factory_to_customer.keys()),
-    GRB.MINIMIZE
-)
-
 ### constraints ###
 
 # Akış koruma kısıtları (fabrikalarda giriş = çıkış)
@@ -91,8 +82,7 @@ for c in customers:
         f"pozitif_demand_{c}"
     )
 
-### solve ###
-
+# Modeli çöz
 model.optimize()
 
 print(time.ctime())
