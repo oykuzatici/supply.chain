@@ -113,6 +113,7 @@ model.setObjective(
 
 # Solve the model
 model.optimize()
+m=model
 
 # Display results if optimal solution is found
 if model.status == GRB.OPTIMAL:
