@@ -7,9 +7,7 @@ Original file is located at
     https://colab.research.google.com/drive/1sGHkibAnpTkEwYyXzJ8KBVUB0k8rPF8g
 """
 
-import time
-from gurobipy import GRB, Model
-
+code = """
 # OPTIGUIDE DATA CODE GOES HERE
 
 capacity_in_supplier = {'supplier1': 120, 'supplier2': 100, 'supplier3': 80}
@@ -54,20 +52,11 @@ from gurobipy import GRB, Model
 
 model = Model("coal_distribution")
 
-# Decision variables
 x = model.addVars(shipping_cost_from_supplier_to_factory.keys(), vtype=GRB.INTEGER, name="x")
 y_negatif = model.addVars(shipping_cost_from_factory_to_customer.keys(), vtype=GRB.INTEGER, name="y_negatif")
 y_pozitif = model.addVars(shipping_cost_from_factory_to_customer.keys(), vtype=GRB.INTEGER, name="y_pozitif")
 
-# Objective function: minimize total cost = shipping + negative product cost + positive product cost + shipping to customer
-model.setObjective(
-    sum(x[i] * shipping_cost_from_supplier_to_factory[i] for i in shipping_cost_from_supplier_to_factory.keys()) +
-    sum(y_negatif[j] * cost_negatif[j[0]] + y_pozitif[j] * cost_pozitif[j[0]] for j in shipping_cost_from_factory_to_customer.keys()) +
-    sum((y_negatif[j] + y_pozitif[j]) * shipping_cost_from_factory_to_customer[j] for j in shipping_cost_from_factory_to_customer.keys()),
-    GRB.MINIMIZE
-)
-
-# Flow conservation constraints (input = output at factories)
+# Flow conservation constraints
 for r in factories:
     model.addConstr(
         sum(x[i] for i in shipping_cost_from_supplier_to_factory.keys() if i[1] == r) ==
@@ -82,7 +71,7 @@ for s in suppliers:
         f"supply_{s}"
     )
 
-# Demand constraints for negative and positive products per customer
+# Demand constraints
 for c in customers:
     model.addConstr(
         sum(y_negatif[j] for j in shipping_cost_from_factory_to_customer.keys() if j[1] == c) >= negatif_needed_for_customer[c],
@@ -92,12 +81,4 @@ for c in customers:
         sum(y_pozitif[j] for j in shipping_cost_from_factory_to_customer.keys() if j[1] == c) >= pozitif_needed_for_customer[c],
         f"pozitif_demand_{c}"
     )
-
-# Optimize the model
-model.optimize()
-
-# Print results
-if model.status == GRB.OPTIMAL:
-    print(f"Optimal total cost: {model.objVal}")
-else:
-    print(f"Optimal solution not found. Status code: {model.status}")
+"""
