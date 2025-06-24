@@ -128,3 +128,4 @@ if model.status == GRB.OPTIMAL:
     for f in factory_capacity:
         print(f"{f}: {factory_capacity[f]} units")
 else:
+    print("❌ No feasible solution found.")
