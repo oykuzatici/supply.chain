@@ -7,7 +7,6 @@ Original file is located at
     https://colab.research.google.com/drive/1SEF3PfPsmBsCgEFpVy-u7xFanlSa8SiP
 """
 
-code = """# OPTIGUIDE DATA CODE GOES HERE
 
 from gurobipy import GRB, Model
 import random
@@ -129,5 +128,3 @@ if model.status == GRB.OPTIMAL:
     for f in factory_capacity:
         print(f"{f}: {factory_capacity[f]} units")
 else:
-    print("❌ No feasible solution found.")
-"""
