@@ -58,6 +58,8 @@ production_cost_negative = {'factory1': 5, 'factory2': 5}
 production_cost_positive = {'factory1': 8, 'factory2': 8}
 base_cost = {'factory1': 39.39, 'factory2': 39.39}
 
+
+# OPTIGUIDE CONSTRAINT CODE GOES HERE
 # Model creation
 model = Model("Coal_Distribution")
 
