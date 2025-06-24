@@ -10,12 +10,10 @@ Original file is located at
 import time
 from gurobipy import GRB, Model
 
-# Data
+# OPTIGUIDE DATA CODE GOES HERE
 
-# Supplier capacities (maximum supply each supplier can provide)
 capacity_in_supplier = {'supplier1': 120, 'supplier2': 100, 'supplier3': 80}
 
-# Shipping costs from suppliers to factories (per unit)
 shipping_cost_from_supplier_to_factory = {
     ('supplier1', 'factory1'): 4,
     ('supplier1', 'factory2'): 6,
@@ -25,14 +23,11 @@ shipping_cost_from_supplier_to_factory = {
     ('supplier3', 'factory2'): 4
 }
 
-# Production costs at factories for negative and positive products (per unit)
 cost_negatif = {'factory1': 39.39, 'factory2': 39.39}
 cost_pozitif = {'factory1': 39.39, 'factory2': 39.39}
 
-# List of customers
 customers = ['fiat_35_nc', 'isuzu_24v']
 
-# Shipping costs from factories to customers (per unit)
 shipping_cost_from_factory_to_customer = {
     ('factory1', 'fiat_35_nc'): 20,
     ('factory1', 'isuzu_24v'): 35,
@@ -40,7 +35,6 @@ shipping_cost_from_factory_to_customer = {
     ('factory2', 'isuzu_24v'): 30,
 }
 
-# Demand for negative and positive products per customer
 negatif_needed_for_customer = {
     'fiat_35_nc': 50,
     'isuzu_24v': 40
@@ -51,26 +45,21 @@ pozitif_needed_for_customer = {
     'isuzu_24v': 30
 }
 
-# Extract unique factories and suppliers from the data
 factories = list(set(i[1] for i in shipping_cost_from_supplier_to_factory.keys()))
 suppliers = list(set(i[0] for i in shipping_cost_from_supplier_to_factory.keys()))
 
-# Create optimization model
+# OPTIGUIDE CONSTRAINT CODE GOES HERE
+
+from gurobipy import GRB, Model
+
 model = Model("coal_distribution")
 
-# Decision variables:
-# x[i]: quantity shipped from supplier to factory
-# y_negatif[j]: quantity of negative product shipped from factory to customer
-# y_pozitif[j]: quantity of positive product shipped from factory to customer
+# Decision variables
 x = model.addVars(shipping_cost_from_supplier_to_factory.keys(), vtype=GRB.INTEGER, name="x")
 y_negatif = model.addVars(shipping_cost_from_factory_to_customer.keys(), vtype=GRB.INTEGER, name="y_negatif")
 y_pozitif = model.addVars(shipping_cost_from_factory_to_customer.keys(), vtype=GRB.INTEGER, name="y_pozitif")
 
-# Objective function:
-# Minimize total cost including:
-# - shipping costs from suppliers to factories
-# - production costs of negative and positive products at factories
-# - shipping costs from factories to customers
+# Objective function: minimize total cost = shipping + negative product cost + positive product cost + shipping to customer
 model.setObjective(
     sum(x[i] * shipping_cost_from_supplier_to_factory[i] for i in shipping_cost_from_supplier_to_factory.keys()) +
     sum(y_negatif[j] * cost_negatif[j[0]] + y_pozitif[j] * cost_pozitif[j[0]] for j in shipping_cost_from_factory_to_customer.keys()) +
@@ -78,25 +67,22 @@ model.setObjective(
     GRB.MINIMIZE
 )
 
-# Flow conservation constraints at each factory:
-# Total quantity received from suppliers = total quantity sent to customers (negative + positive)
-for f in factories:
+# Flow conservation constraints (input = output at factories)
+for r in factories:
     model.addConstr(
-        sum(x[i] for i in shipping_cost_from_supplier_to_factory.keys() if i[1] == f) ==
-        sum(y_negatif[j] + y_pozitif[j] for j in shipping_cost_from_factory_to_customer.keys() if j[0] == f),
-        f"flow_{f}"
+        sum(x[i] for i in shipping_cost_from_supplier_to_factory.keys() if i[1] == r) ==
+        sum(y_negatif[j] + y_pozitif[j] for j in shipping_cost_from_factory_to_customer.keys() if j[0] == r),
+        f"flow_{r}"
     )
 
-# Supplier capacity constraints:
-# Total quantity shipped from each supplier cannot exceed its capacity
+# Supplier capacity constraints
 for s in suppliers:
     model.addConstr(
         sum(x[i] for i in shipping_cost_from_supplier_to_factory.keys() if i[0] == s) <= capacity_in_supplier[s],
         f"supply_{s}"
     )
 
-# Demand fulfillment constraints for each customer:
-# The amount of negative and positive product received by each customer must meet or exceed demand
+# Demand constraints for negative and positive products per customer
 for c in customers:
     model.addConstr(
         sum(y_negatif[j] for j in shipping_cost_from_factory_to_customer.keys() if j[1] == c) >= negatif_needed_for_customer[c],
@@ -109,14 +95,9 @@ for c in customers:
 
 # Optimize the model
 model.optimize()
-m = model
 
-# Update model and optimize again (optional)
-m.update()
-model.optimize()
-
-print(time.ctime())
-if m.status == GRB.OPTIMAL:
-    print(f'Optimal total cost: {m.objVal}')
+# Print results
+if model.status == GRB.OPTIMAL:
+    print(f"Optimal total cost: {model.objVal}")
 else:
-    print("Optimal solution not found. Status code:", m.status)
+    print(f"Optimal solution not found. Status code: {model.status}")
