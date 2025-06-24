@@ -7,10 +7,7 @@ Original file is located at
     https://colab.research.google.com/drive/1sGHkibAnpTkEwYyXzJ8KBVUB0k8rPF8g
 """
 
-import time
-from gurobipy import GRB, Model
-
-### data ###
+# OPTIGUIDE DATA CODE GOES HERE
 
 capacity_in_supplier = {'supplier1': 120, 'supplier2': 100, 'supplier3': 80}
 
@@ -48,13 +45,15 @@ pozitif_needed_for_customer = {
 factories = list(set(i[1] for i in shipping_cost_from_supplier_to_factory.keys()))
 suppliers = list(set(i[0] for i in shipping_cost_from_supplier_to_factory.keys()))
 
+# OPTIGUIDE CONSTRAINT CODE GOES HERE
+
+from gurobipy import GRB, Model
+
 model = Model("coal_distribution")
 
 x = model.addVars(shipping_cost_from_supplier_to_factory.keys(), vtype=GRB.INTEGER, name="x")
 y_negatif = model.addVars(shipping_cost_from_factory_to_customer.keys(), vtype=GRB.INTEGER, name="y_negatif")
 y_pozitif = model.addVars(shipping_cost_from_factory_to_customer.keys(), vtype=GRB.INTEGER, name="y_pozitif")
-
-### constraints ###
 
 # Akış koruma kısıtları (fabrikalarda giriş = çıkış)
 for r in factories:
@@ -81,12 +80,3 @@ for c in customers:
         sum(y_pozitif[j] for j in shipping_cost_from_factory_to_customer.keys() if j[1] == c) >= pozitif_needed_for_customer[c],
         f"pozitif_demand_{c}"
     )
-
-# Modeli çöz
-model.optimize()
-
-print(time.ctime())
-if model.status == GRB.OPTIMAL:
-    print(f'Optimal cost: {model.objVal}')
-else:
-    print("Optimum bulunamadı. Durum kodu:", model.status)
