@@ -58,8 +58,6 @@ production_cost_negative = {'factory1': 5, 'factory2': 5}
 production_cost_positive = {'factory1': 8, 'factory2': 8}
 base_cost = {'factory1': 39.39, 'factory2': 39.39}
 
-
-# OPTIGUIDE CONSTRAINT CODE GOES HERE
 # Model creation
 model = Model("Coal_Distribution")
 
@@ -71,6 +69,7 @@ x = model.addVars(shipping_sf.keys(), vtype=GRB.INTEGER, name="x")
 y_negative = model.addVars(shipping_fc.keys(), vtype=GRB.INTEGER, name="y_negative")
 y_positive = model.addVars(shipping_fc.keys(), vtype=GRB.INTEGER, name="y_positive")
 
+# OPTIGUIDE CONSTRAINT CODE GOES HERE
 # Supplier capacity constraints
 for s in supplier_capacity:
     model.addConstr(
