@@ -11,6 +11,8 @@ Original file is located at
 from gurobipy import GRB, Model
 import random
 
+!pip install gurobipy
+
 # Supplier capacity limits
 supplier_capacity = {'supplier1': 120, 'supplier2': 100, 'supplier3': 80}
 
