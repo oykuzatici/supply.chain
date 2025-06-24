@@ -10,7 +10,7 @@ Original file is located at
 import time
 from gurobipy import GRB, Model
 
-# === data ===
+### data ###
 
 capacity_in_supplier = {'supplier1': 120, 'supplier2': 100, 'supplier3': 80}
 
@@ -54,7 +54,7 @@ x = model.addVars(shipping_cost_from_supplier_to_factory.keys(), vtype=GRB.INTEG
 y_negatif = model.addVars(shipping_cost_from_factory_to_customer.keys(), vtype=GRB.INTEGER, name="y_negatif")
 y_pozitif = model.addVars(shipping_cost_from_factory_to_customer.keys(), vtype=GRB.INTEGER, name="y_pozitif")
 
-# === objective ===
+### objective ###
 
 model.setObjective(
     sum(x[i] * shipping_cost_from_supplier_to_factory[i] for i in shipping_cost_from_supplier_to_factory.keys()) +
@@ -63,7 +63,7 @@ model.setObjective(
     GRB.MINIMIZE
 )
 
-# === constraints ===
+### constraints ###
 
 # Akış koruma kısıtları (fabrikalarda giriş = çıkış)
 for r in factories:
@@ -91,7 +91,7 @@ for c in customers:
         f"pozitif_demand_{c}"
     )
 
-# === solve ===
+### solve ###
 
 model.optimize()
 
