@@ -7,11 +7,10 @@ Original file is located at
     https://colab.research.google.com/drive/1SEF3PfPsmBsCgEFpVy-u7xFanlSa8SiP
 """
 
+!pip install gurobipy
 
 from gurobipy import GRB, Model
 import random
-
-!pip install gurobipy
 
 # Supplier capacity limits
 supplier_capacity = {'supplier1': 120, 'supplier2': 100, 'supplier3': 80}
