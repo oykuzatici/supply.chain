@@ -23,23 +23,23 @@ shipping_cost_from_supplier_to_factory = {
 cost_negatif = {'factory1': 39.39, 'factory2': 39.39}
 cost_pozitif = {'factory1': 39.39, 'factory2': 39.39}
 
-customers = ['fiat_35_nc', 'isuzu_24v']
+products = ['product1', 'product2']
 
-shipping_cost_from_factory_to_customer = {
-    ('factory1', 'fiat_35_nc'): 20,
-    ('factory1', 'isuzu_24v'): 35,
-    ('factory2', 'fiat_35_nc'): 25,
-    ('factory2', 'isuzu_24v'): 30,
+shipping_cost_from_factory_to_product = {
+    ('factory1', 'product1'): 20,
+    ('factory1', 'product2'): 35,
+    ('factory2', 'product1'): 25,
+    ('factory2', 'product2'): 30,
 }
 
-negatif_needed_for_customer = {
-    'fiat_35_nc': 50,
-    'isuzu_24v': 40
+negatif_needed_for_product = {
+    'product1': 50,
+    'product2': 40
 }
 
-pozitif_needed_for_customer = {
-    'fiat_35_nc': 60,
-    'isuzu_24v': 30
+pozitif_needed_for_product = {
+    'product1': 60,
+    'product2': 30
 }
 
 factories = list(set(i[1] for i in shipping_cost_from_supplier_to_factory.keys()))
@@ -52,14 +52,14 @@ from gurobipy import GRB, Model
 model = Model("coal_distribution")
 
 x = model.addVars(shipping_cost_from_supplier_to_factory.keys(), vtype=GRB.INTEGER, name="x")
-y_negatif = model.addVars(shipping_cost_from_factory_to_customer.keys(), vtype=GRB.INTEGER, name="y_negatif")
-y_pozitif = model.addVars(shipping_cost_from_factory_to_customer.keys(), vtype=GRB.INTEGER, name="y_pozitif")
+y_negatif = model.addVars(shipping_cost_from_factory_to_product.keys(), vtype=GRB.INTEGER, name="y_negatif")
+y_pozitif = model.addVars(shipping_cost_from_factory_to_product.keys(), vtype=GRB.INTEGER, name="y_pozitif")
 
-# Objective function: minimize total cost = supplier-to-factory shipping + factory processing + factory-to-customer shipping
+# Objective function: minimize total cost = supplier-to-factory shipping + factory processing + factory-to-product shipping
 model.setObjective(
     sum(x[i] * shipping_cost_from_supplier_to_factory[i] for i in shipping_cost_from_supplier_to_factory.keys()) +
-    sum(y_negatif[j] * cost_negatif[j[0]] + y_pozitif[j] * cost_pozitif[j[0]] for j in shipping_cost_from_factory_to_customer.keys()) +
-    sum((y_negatif[j] + y_pozitif[j]) * shipping_cost_from_factory_to_customer[j] for j in shipping_cost_from_factory_to_customer.keys()),
+    sum(y_negatif[j] * cost_negatif[j[0]] + y_pozitif[j] * cost_pozitif[j[0]] for j in shipping_cost_from_factory_to_product.keys()) +
+    sum((y_negatif[j] + y_pozitif[j]) * shipping_cost_from_factory_to_product[j] for j in shipping_cost_from_factory_to_product.keys()),
     GRB.MINIMIZE
 )
 
@@ -67,7 +67,7 @@ model.setObjective(
 for r in factories:
     model.addConstr(
         sum(x[i] for i in shipping_cost_from_supplier_to_factory.keys() if i[1] == r) ==
-        sum(y_negatif[j] + y_pozitif[j] for j in shipping_cost_from_factory_to_customer.keys() if j[0] == r),
+        sum(y_negatif[j] + y_pozitif[j] for j in shipping_cost_from_factory_to_product.keys() if j[0] == r),
         f"flow_{r}"
     )
 
@@ -78,15 +78,15 @@ for s in suppliers:
         f"supply_{s}"
     )
 
-# Customer demand constraints
-for c in customers:
+# Product demand constraints
+for p in products:
     model.addConstr(
-        sum(y_negatif[j] for j in shipping_cost_from_factory_to_customer.keys() if j[1] == c) >= negatif_needed_for_customer[c],
-        f"negatif_demand_{c}"
+        sum(y_negatif[j] for j in shipping_cost_from_factory_to_product.keys() if j[1] == p) >= negatif_needed_for_product[p],
+        f"negatif_demand_{p}"
     )
     model.addConstr(
-        sum(y_pozitif[j] for j in shipping_cost_from_factory_to_customer.keys() if j[1] == c) >= pozitif_needed_for_customer[c],
-        f"pozitif_demand_{c}"
+        sum(y_pozitif[j] for j in shipping_cost_from_factory_to_product.keys() if j[1] == p) >= pozitif_needed_for_product[p],
+        f"pozitif_demand_{p}"
     )
 
 # Optimize the model
