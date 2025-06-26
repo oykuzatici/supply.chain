@@ -10,18 +10,33 @@ Original file is located at
 from gurobipy import Model, GRB
 
 def solve_coal_distribution(demand_negative, demand_positive):
-    # Sabit parametreler
+    """
+    Solve the coal distribution optimization problem.
+
+    Parameters:
+    - demand_negative: dict, demand of negative coal per customer
+    - demand_positive: dict, demand of positive coal per customer
+
+    Returns:
+    - dict with objective value and positive decision variables if optimal,
+      otherwise dict with 'status': 'Infeasible'
+    """
+
+    # OPTIGUIDE DATA CODE GOES HERE
+    # Supplier capacity limits
     supplier_capacity = {
         'supplier1': 120,
         'supplier2': 100,
         'supplier3': 80
     }
 
+    # Factory production capacity
     factory_capacity = {
         'factory1': 140,
         'factory2': 120
     }
 
+    # Shipping costs from supplier to factory
     shipping_sf = {
         ('supplier1', 'factory1'): 4,
         ('supplier1', 'factory2'): 6,
@@ -31,6 +46,7 @@ def solve_coal_distribution(demand_negative, demand_positive):
         ('supplier3', 'factory2'): 4
     }
 
+    # Shipping costs from factory to customer
     shipping_fc = {
         ('factory1', 'customer1'): 20,
         ('factory1', 'customer2'): 35,
@@ -38,39 +54,60 @@ def solve_coal_distribution(demand_negative, demand_positive):
         ('factory2', 'customer2'): 30
     }
 
+    # Additional production cost per unit for each factory
     production_cost_negative = {'factory1': 5, 'factory2': 5}
     production_cost_positive = {'factory1': 8, 'factory2': 8}
+
+    # Base cost per unit for each factory
     base_cost = {'factory1': 39.39, 'factory2': 39.39}
 
-    # Model oluşturuluyor
+    # MODEL CREATION CODE GOES HERE
     model = Model("Coal_Distribution")
-    model.setParam('OutputFlag', 0)  # Konsola gereksiz çıktı basmasın
+    model.setParam('OutputFlag', 0)  # Solver çıktısını kapat
 
-    # Karar değişkenleri
+    # DECISION VARIABLES CODE GOES HERE
+    # x: shipment from supplier to factory
     x = model.addVars(shipping_sf.keys(), vtype=GRB.INTEGER, name="x")
+    # y_negative: shipment of negative coal from factory to customer
     y_negative = model.addVars(shipping_fc.keys(), vtype=GRB.INTEGER, name="y_negative")
+    # y_positive: shipment of positive coal from factory to customer
     y_positive = model.addVars(shipping_fc.keys(), vtype=GRB.INTEGER, name="y_positive")
 
-    # Kısıtlar
+    # CONSTRAINTS CODE GOES HERE
+    # Supplier capacity constraints
     for s in supplier_capacity:
-        model.addConstr(sum(x[s, f] for f in factory_capacity) <= supplier_capacity[s], name=f"supplier_capacity_{s}")
+        model.addConstr(
+            sum(x[s, f] for f in factory_capacity) <= supplier_capacity[s],
+            name=f"supplier_capacity_{s}"
+        )
 
+    # Customer demand constraints (both coal types)
     for c in demand_negative:
-        model.addConstr(sum(y_negative[f, c] for f in factory_capacity) >= demand_negative[c], name=f"demand_negative_{c}")
-        model.addConstr(sum(y_positive[f, c] for f in factory_capacity) >= demand_positive[c], name=f"demand_positive_{c}")
+        model.addConstr(
+            sum(y_negative[f, c] for f in factory_capacity) >= demand_negative[c],
+            name=f"demand_negative_{c}"
+        )
+        model.addConstr(
+            sum(y_positive[f, c] for f in factory_capacity) >= demand_positive[c],
+            name=f"demand_positive_{c}"
+        )
 
+    # Factory capacity constraints (sum of both coal types)
     for f in factory_capacity:
         model.addConstr(
             sum(y_negative[f, c] + y_positive[f, c] for c in demand_negative) <= factory_capacity[f],
             name=f"factory_capacity_{f}"
         )
+
+    # Flow balance constraints: incoming = outgoing for each factory
+    for f in factory_capacity:
         model.addConstr(
             sum(x[s, f] for s in supplier_capacity) ==
             sum(y_negative[f, c] + y_positive[f, c] for c in demand_negative),
             name=f"flow_balance_{f}"
         )
 
-    # Amaç fonksiyonu
+    # OBJECTIVE FUNCTION CODE GOES HERE
     model.setObjective(
         sum(shipping_sf[sf] * x[sf] for sf in shipping_sf) +
         sum((shipping_fc[fc] + base_cost[fc[0]] + production_cost_negative[fc[0]]) * y_negative[fc] for fc in shipping_fc) +
@@ -78,28 +115,30 @@ def solve_coal_distribution(demand_negative, demand_positive):
         GRB.MINIMIZE
     )
 
-    # Modeli çöz
+    # SOLVE MODEL
     model.optimize()
 
-    # Sonuçları döndür
+    # RETURN RESULTS
     if model.status == GRB.OPTIMAL:
-        result = {
+        return {
             "objective_value": model.ObjVal,
             "variables": {v.VarName: v.X for v in model.getVars() if v.X > 0}
         }
-        return result
     else:
         return {"status": "Infeasible"}
 
-# 🔁 Örnek kullanım:
-demand_negative_example = {'customer1': 50, 'customer2': 40}
-demand_positive_example = {'customer1': 60, 'customer2': 30}
 
-solution = solve_coal_distribution(demand_negative_example, demand_positive_example)
+# EXAMPLE USAGE
+if __name__ == "__main__":
+    # OPTIGUIDE DEMAND DATA GOES HERE
+    demand_negative_example = {'customer1': 50, 'customer2': 40}
+    demand_positive_example = {'customer1': 60, 'customer2': 30}
 
-if "objective_value" in solution:
-    print(f"✅ Total cost: {solution['objective_value']:.2f}")
-    for name, val in solution["variables"].items():
-        print(f"{name}: {val}")
-else:
-    print("❌ No feasible solution found.")
+    solution = solve_coal_distribution(demand_negative_example, demand_positive_example)
+
+    if "objective_value" in solution:
+        print(f"✅ Total cost: {solution['objective_value']:.2f}")
+        for name, val in solution["variables"].items():
+            print(f"{name}: {val}")
+    else:
+        print("❌ No feasible solution found.")
