@@ -117,6 +117,7 @@ def solve_coal_distribution(demand_negative, demand_positive):
 
     # SOLVE MODEL
     model.optimize()
+    m = model  # Modeli değişkene atıyoruz, gerektiğinde kullanmak için
 
     # RETURN RESULTS
     if model.status == GRB.OPTIMAL:
