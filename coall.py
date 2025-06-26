@@ -63,7 +63,7 @@ def solve_coal_distribution(demand_negative, demand_positive):
 
     # MODEL CREATION CODE GOES HERE
     model = Model("Coal_Distribution")
-    model.setParam('OutputFlag', 0)  # Solver çıktısını kapat
+    model.setParam('OutputFlag', 0)  # Solver output kapatıldı
 
     # DECISION VARIABLES CODE GOES HERE
     # x: shipment from supplier to factory
@@ -73,7 +73,7 @@ def solve_coal_distribution(demand_negative, demand_positive):
     # y_positive: shipment of positive coal from factory to customer
     y_positive = model.addVars(shipping_fc.keys(), vtype=GRB.INTEGER, name="y_positive")
 
-    # CONSTRAINTS CODE GOES HERE
+    # OPTIGUIDE CONSTRAINT CODE GOES HERE
     # Supplier capacity constraints
     for s in supplier_capacity:
         model.addConstr(
@@ -81,7 +81,7 @@ def solve_coal_distribution(demand_negative, demand_positive):
             name=f"supplier_capacity_{s}"
         )
 
-    # Customer demand constraints (both coal types)
+    # Customer demand constraints (for both coal types)
     for c in demand_negative:
         model.addConstr(
             sum(y_negative[f, c] for f in factory_capacity) >= demand_negative[c],
@@ -92,14 +92,14 @@ def solve_coal_distribution(demand_negative, demand_positive):
             name=f"demand_positive_{c}"
         )
 
-    # Factory capacity constraints (sum of both coal types)
+    # Factory capacity constraints (total of both coal types)
     for f in factory_capacity:
         model.addConstr(
             sum(y_negative[f, c] + y_positive[f, c] for c in demand_negative) <= factory_capacity[f],
             name=f"factory_capacity_{f}"
         )
 
-    # Flow balance constraints: incoming = outgoing for each factory
+    # Flow balance constraints: incoming coal equals outgoing coal for each factory
     for f in factory_capacity:
         model.addConstr(
             sum(x[s, f] for s in supplier_capacity) ==
